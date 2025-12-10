@@ -10,7 +10,7 @@ from utils import *
 
 
 
-def main():
+def main(*args, **kwargs):
   prompt_api_key()
   paths = prompt_path_list()  
   client = start_gemini()
