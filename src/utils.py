@@ -82,7 +82,7 @@ def start_gemini():
     return client
 
 
-def execute_git_command_in_paths(paths, command_args):
+def execute_git_command_in_paths(paths, command_args) -> str: 
     """
     Executes a given command in each of the provided git repository paths.
 
@@ -91,6 +91,8 @@ def execute_git_command_in_paths(paths, command_args):
         command_args (list): The command to execute as a list of strings
                              (e.g., ['git', 'log', '--oneline', '-n', '5']).
     """
+    GIT_LOG_TEXT = ""
+
     for repo_path in paths:
         # Check if it's a git repository
         if not os.path.isdir(os.path.join(repo_path, ".git")):
@@ -107,6 +109,8 @@ def execute_git_command_in_paths(paths, command_args):
                 text=True,  # Decode output as text
                 check=True,  # Raise an exception on non-zero exit codes
             )
+            GIT_LOG_TEXT += f"\n--- Output from {repo_path} ---\n"
+            GIT_LOG_TEXT += result.stdout
             print(result.stdout)
 
         except FileNotFoundError:
@@ -117,3 +121,39 @@ def execute_git_command_in_paths(paths, command_args):
         except subprocess.CalledProcessError as e:
             print(f"Error executing command in {repo_path}:")
             print(e.stderr)
+    return GIT_LOG_TEXT
+
+
+def execute_gemini_prompt(client, prompt: str) -> str:
+    """
+    Executes a Gemini API prompt and returns the response text.
+
+    Args:
+        client: The Gemini API client.
+        prompt (str): The prompt text to send to the Gemini API.
+
+    Returns:
+        str: The response text from the Gemini API.
+    """
+    response = client.chat.completions.create(
+        model="gemini-1.5-pro",
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        max_output_tokens=1024,
+    )
+    return response.choices[0].message.content
+
+
+def save_response_to_file(response_text: str, filename: str) -> None:
+    """
+    Saves the given response text to a file.
+
+    Args:
+        response_text (str): The text to save.
+        filename (str): The name of the file to save the text to.
+    """
+    with open(filename, "w") as file:
+        file.write(response_text)
+    print(f"Response saved to {filename}")
+
