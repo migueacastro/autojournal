@@ -1,173 +1,142 @@
 import os
-from dotenv import load_dotenv, set_key, get_key
-from google import genai
+import subprocess
 import json
 from datetime import datetime
-import subprocess
+from google import genai
+from google.genai import types
+from dotenv import load_dotenv, set_key, get_key
 
 # Construct the path to the .env file in the parent directory
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 load_dotenv(dotenv_path=dotenv_path)
 
-USERNAME_GIT = get_key(dotenv_path, "USERNAME_GIT") if get_key(dotenv_path, "USERNAME_GIT") else "user"
+USERNAME_GIT = (
+    get_key(dotenv_path, "USERNAME_GIT")
+    if get_key(dotenv_path, "USERNAME_GIT")
+    else "user"
+)
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
 DEFAULT_FILE_NAME = f"cambios-{USERNAME_GIT}-{CURRENT_DATE}.md"
-DEFAULT_SAVE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs",DEFAULT_FILE_NAME))
-SAVE_PATH = get_key(dotenv_path, "SAVE_PATH") if get_key(dotenv_path, "SAVE_PATH") else DEFAULT_SAVE_PATH
+DEFAULT_SAVE_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "outputs", DEFAULT_FILE_NAME)
+)
+DEFAULT_SINCE_DATE="2 weeks ago"
+
+SAVE_PATH = (
+    get_key(dotenv_path, "SAVE_PATH")
+    if get_key(dotenv_path, "SAVE_PATH")
+    else DEFAULT_SAVE_PATH
+)
+SINCE_DATE = (
+    get_key(dotenv_path, "SINCE_DATE")
+    if get_key(dotenv_path, "SINCE_DATE")
+    else DEFAULT_SINCE_DATE
+)
 
 DEFAULT_PROMPT_TEMPLATE = """
-Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo en un texto de tipo Markdown de la siguiente manera:
+Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo como un changelog en un texto de tipo Markdown de la siguiente manera:
   # (Fecha: DD/MM/AAAA)
     ## Repositorio: (Nombre del repositorio)
      - Descripción del cambio 1 en el repositorio x
-     - Descripción del cambio 2 en el repositorio y"""
+     - Descripcion del cambio 2 en el repositorio x
+     - Descripción del cambio 1 en el repositorio y
+     - Descripcion del cambio 2 en el repositorio y
+     """
 
 GEMINI_API_KEY = get_key(dotenv_path, "GEMINI_API_KEY")
-PATH_LIST = json.loads(get_key(dotenv_path, "PATH_LIST")) if get_key(dotenv_path, "PATH_LIST") else []
-PROMPT_TEMPLATE = get_key(dotenv_path, "PROMPT_TEMPLATE") if get_key(dotenv_path, "PROMPT_TEMPLATE") else DEFAULT_PROMPT_TEMPLATE
+PATH_LIST = (
+    json.loads(get_key(dotenv_path, "PATH_LIST"))
+    if get_key(dotenv_path, "PATH_LIST")
+    else []
+)
+PROMPT_TEMPLATE = (
+    get_key(dotenv_path, "PROMPT_TEMPLATE")
+    if get_key(dotenv_path, "PROMPT_TEMPLATE")
+    else DEFAULT_PROMPT_TEMPLATE
+)
 
 
-
-def prompt_api_key() -> None:
-    global GEMINI_API_KEY
-
-    # Check .env api key
-    if GEMINI_API_KEY:
-        try:
-            genai.configure(api_key=GEMINI_API_KEY)
-            list(genai.list_models())
-            print("Existing GEMINI API KEY is valid.")
-            return
-
-        except Exception as e:
-            print("Existing GEMINI API KEY is invalid.")
-            GEMINI_API_KEY = None
-
-    # If no valid key, enter the loop to prompt for one.
-    while True:
-        key = str(input("Please paste your GEMINI API KEY here\n: ")).strip()
-        if not key:
-            continue
-        try:
-            genai.configure(api_key=key)
-            list(genai.list_models())  # Test call
-
-            # If we are here, the key is valid.
-            os.environ["GEMINI_API_KEY"] = key
-            set_key(dotenv_path, "GEMINI_API_KEY", key)
-            print("GEMINI API KEY has been validated and saved.")
-            GEMINI_API_KEY = key
-            break  # Exit loop
-
-        except Exception as e:
-            print("Invalid API Key. Please try again.")
-
-def prompt_path_list() -> None:
-    global PATH_LIST
-
-
-    if len(PATH_LIST) > 0:
-        #validate each path
-        pass
-
-    while True:
-        path = str(input("Please paste the project path here (Cancel with empty input)\n: ")).strip()
-        if not path:
-            if len(PATH_LIST) > 0:
-                break
-            else:
-                print("No paths entered. Please try again")
-                continue
-        PATH_LIST.append(path)
-    return PATH_LIST
-
-
-
-    
-#rebase
-
-
-def start_gemini():
-    global GEMINI_API_KEY
-    # By the time this is called, prompt_api_key should have ensured a valid key.
-    # The genai module is already configured by prompt_api_key.
-    client = genai.Client()  # Client will use the globally configured key
+def create_client():
+    """
+    Crear cliente de GEMINI
+    """
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    print()
     return client
 
 
-def execute_git_command_in_paths(paths, command_args) -> str: 
+def execute_git_log(path):
     """
-    Executes a given command in each of the provided git repository paths.
-
-    Args:
-        paths (list): A list of paths to Git repositories.
-        command_args (list): The command to execute as a list of strings
-                             (e.g., ['git', 'log', '--oneline', '-n', '5']).
+    Ejecutar git log en una ruta
     """
-    GIT_LOG_TEXT = ""
+    if not os.path.isdir(path):
+        return
 
-    for repo_path in paths:
-        # Check if it's a git repository
-        if not os.path.isdir(os.path.join(repo_path, ".git")):
-            print(f"--- Skipping {repo_path}: Not a Git repository. ---")
-            continue
+    repo_name = os.path.basename(os.path.abspath(path))
 
-        print(f"--- Executing in: {repo_path} ---")
-        try:
-            # Execute the command in the repository's directory
-            result = subprocess.run(
-                command_args,
-                cwd=repo_path,  # Run command in this directory
-                capture_output=True,  # Capture stdout and stderr
-                text=True,  # Decode output as text
-                check=True,  # Raise an exception on non-zero exit codes
-            )
-            GIT_LOG_TEXT += f"\n--- Output from {repo_path} ---\n"
-            GIT_LOG_TEXT += result.stdout
-            print(result.stdout)
+    try:
 
-        except FileNotFoundError:
-            print(
-                f"Error: Command '{command_args[0]}' not found. Is Git installed and in your PATH?"
-            )
-            return  # Stop further execution
-        except subprocess.CalledProcessError as e:
-            print(f"Error executing command in {repo_path}:")
-            print(e.stderr)
-    return GIT_LOG_TEXT
+        log_output = subprocess.check_output(
+            ["git", "log",f'--since="{SINCE_DATE}"'],
+            cwd=path,
+            text=True,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+        )
+        return f"--- Repositorio: {repo_name} ---\n{log_output}"
+
+    except FileNotFoundError:
+        print(
+            "Error: El comando 'git' no se encontró. Asegúrate de que Git esté instalado y su ejecutable en el PATH del sistema."
+        )
+        return ""
+
+    except subprocess.CalledProcessError as e:
+
+        error_message = e.output
+        if "not a git repository" in error_message.lower():
+            print(f"{path} no es un repositorio de git.\n")
+
+        return ""
 
 
-def execute_gemini_prompt(client, prompt: str) -> str:
+def execute_git_log_in_paths(paths):
     """
-    Executes a Gemini API prompt and returns the response text.
-
-    Args:
-        client: The Gemini API client.
-        prompt (str): The prompt text to send to the Gemini API.
-
-    Returns:
-        str: The response text from the Gemini API.
+    Ejecutar git log en varias rutas
     """
-    response = client.chat.completions.create(
-        model="gemini-1.5-pro",
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        max_output_tokens=1024,
+    all_logs = []
+    for path in paths:
+        all_logs.append(execute_git_log(path))
+
+    return "\\n".join(all_logs)  # Unir logs con \n
+
+
+def prompt_with_logs(client: genai.Client, text: str):
+    """
+    Pasar los logs a un prompt de GEMINI
+    """
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=[types.Part.from_text(text=PROMPT_TEMPLATE), types.Part.from_text(text=text)],
+        config=types.GenerateContentConfig(
+            temperature=1.0,
+        ),
     )
-    return response.choices[0].message.content
+    return response.text
 
 
-def save_response_to_file(response_text: str, filename: str) -> None:
+def save_output_to_markdown(content: str, path: str = SAVE_PATH):
     """
-    Saves the given response text to a file.
-
-    Args:
-        response_text (str): The text to save.
-        filename (str): The name of the file to save the text to.
+    Guardar la salida a un archivo markdown en una ruta
     """
-    with open(filename, "w") as file:
-        file.write(response_text)
-    print(f"Response saved to {filename}")
+    try:
+        output_dir = os.path.dirname(path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
 
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"Contenido guardado exitosamente en: {path}")
+    except IOError as e:
+        print(f"Error al guardar el archivbo en {path}: {e}")
