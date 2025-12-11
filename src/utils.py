@@ -2,16 +2,30 @@ import os
 from dotenv import load_dotenv, set_key, get_key
 from google import genai
 import json
+from datetime import datetime
 import subprocess
 
 # Construct the path to the .env file in the parent directory
 dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 load_dotenv(dotenv_path=dotenv_path)
+
+USERNAME_GIT = get_key(dotenv_path, "USERNAME_GIT") if get_key(dotenv_path, "USERNAME_GIT") else "user"
+CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
+DEFAULT_FILE_NAME = f"cambios-{USERNAME_GIT}-{CURRENT_DATE}.md"
+DEFAULT_SAVE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs",DEFAULT_FILE_NAME))
+SAVE_PATH = get_key(dotenv_path, "SAVE_PATH") if get_key(dotenv_path, "SAVE_PATH") else DEFAULT_SAVE_PATH
+
+DEFAULT_PROMPT_TEMPLATE = """
+Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo en un texto de tipo Markdown de la siguiente manera:
+  # (Fecha: DD/MM/AAAA)
+    ## Repositorio: (Nombre del repositorio)
+     - Descripción del cambio 1 en el repositorio x
+     - Descripción del cambio 2 en el repositorio y"""
+
 GEMINI_API_KEY = get_key(dotenv_path, "GEMINI_API_KEY")
 PATH_LIST = json.loads(get_key(dotenv_path, "PATH_LIST")) if get_key(dotenv_path, "PATH_LIST") else []
-
-
+PROMPT_TEMPLATE = get_key(dotenv_path, "PROMPT_TEMPLATE") if get_key(dotenv_path, "PROMPT_TEMPLATE") else DEFAULT_PROMPT_TEMPLATE
 
 
 
