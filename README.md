@@ -2,30 +2,32 @@
 
 AutoJournal is a Python application that automatically generates a changelog or activity report from the git logs of your local repositories using the Gemini API.
 
-## Features 
+## Features
 
-*   **Automated Changelog Generation:** Creates a clean, markdown-formatted changelog from your git commits.
-*   **Multi-Repository Support:** Scans multiple local git repositories.
-*   **Customizable Timeframe:** Specify the timeframe for the git logs (e.g., "1 day ago", "2 weeks ago").
-*   **Customizable Output:** Tailor the output file name and save path.
-*   **Powered by Gemini:** Uses Google's Gemini API for intelligent log summarization.
+- **Automated Changelog Generation:** Creates a clean, markdown-formatted changelog from your git commits.
+- **Multi-Repository Support:** Scans multiple local git repositories.
+- **Customizable Timeframe:** Specify the timeframe for the git logs (e.g., "1 day ago", "2 weeks ago").
+- **Customizable Output:** Tailor the output file name and save path.
+- **Powered by Gemini:** Uses Google's Gemini API for intelligent log summarization.
 
-## Prerequisites 
+## Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-*   [Python 3.6+](https://www.python.org/downloads/)
-*   [Git](https://git-scm.com/downloads)
+- [Python 3.6+](https://www.python.org/downloads/)
+- [Git](https://git-scm.com/downloads)
 
-## Installation & Setup 
+## Installation & Setup
 
 1.  **Clone the repository:**
+
     ```bash
     git clone https://github.com/migueacastro/autojournal
     cd autojournal
     ```
 
 2.  **Install dependencies:**
+
     ```bash
     pip install -r requirements.txt
     ```
@@ -45,7 +47,7 @@ Before you begin, ensure you have the following installed:
 
     # The timeframe for the git logs (e.g., "1 day ago", "2 weeks ago", "2024-01-01")
     SINCE_DATE="2 weeks ago"
-    
+
     # (Optional) The absolute path to save the output file
     SAVE_PATH="/path/to/save/output.md"
 
@@ -55,27 +57,33 @@ Before you begin, ensure you have the following installed:
 
     **Note:** You can get your Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
-## Usage 
+## Usage
 
 To run the application, execute the `main.py` script from the root of the project:
 
 ```bash
 python src/main.py
 ```
+### Options
+
+- -h, --help : Show Help Message
+- -lk, --loadkey : Load Gemini API Key
+- -s, --since : Specify Since Date
 
 The script will then:
+
 1.  Read the configuration from your `.env` file.
 2.  Fetch the git logs from the specified repositories.
 3.  Generate a report using the Gemini API.
 4.  Save the report to the specified `SAVE_PATH` or the default location (`outputs/cambios-<username>-<date>.md`).
 
-## Customization 
+## Customization
 
 You can customize the following in your `.env` file:
 
-*   **`PROMPT_TEMPLATE`**: Change the prompt to alter the style and content of the generated report.
-*   **`SAVE_PATH`**: Specify a different absolute path to save the output file.
-*   **`USERNAME_GIT`**: Change the username used in the default output file name.
-*   **`SINCE_DATE`**: Adjust the timeframe for the git logs.
+- **`PROMPT_TEMPLATE`**: Change the prompt to alter the style and content of the generated report.
+- **`SAVE_PATH`**: Specify a different absolute path to save the output file.
+- **`USERNAME_GIT`**: Change the username used in the default output file name.
+- **`SINCE_DATE`**: Adjust the timeframe for the git logs.
 
 ---
