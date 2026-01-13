@@ -21,7 +21,7 @@ DEFAULT_FILE_NAME = f"cambios-{USERNAME_GIT}-{CURRENT_DATE}.md"
 DEFAULT_SAVE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "outputs", DEFAULT_FILE_NAME)
 )
-DEFAULT_SINCE_DATE="2 weeks ago"
+DEFAULT_SINCE_DATE = "2 weeks ago"
 
 SAVE_PATH = (
     get_key(dotenv_path, "SAVE_PATH")
@@ -35,7 +35,7 @@ SINCE_DATE = (
 )
 
 DEFAULT_PROMPT_TEMPLATE = """
-Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo como un changelog en un texto de tipo Markdown de la siguiente manera:
+Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo como un changelog en un texto de tipo Markdown con todo los cambios en español. exceptuando nombres propios claro y no digas ningun preambulo con "aqui tienes un changelog". Solo muestra el changelog. de la siguiente manera:
   # (Fecha: DD/MM/AAAA)
     ## Repositorio: (Nombre del repositorio)
      - Descripción del cambio 1 en el repositorio x
@@ -78,7 +78,7 @@ def execute_git_log(path):
     try:
 
         log_output = subprocess.check_output(
-            ["git", "log",f'--since="{SINCE_DATE}"'],
+            ["git", "log", f'--since="{SINCE_DATE}"'],
             cwd=path,
             text=True,
             stderr=subprocess.STDOUT,
@@ -118,9 +118,12 @@ def prompt_with_logs(client: genai.Client, text: str):
     """
     response = client.models.generate_content(
         model="gemini-2.5-flash",
-        contents=[types.Part.from_text(text=PROMPT_TEMPLATE), types.Part.from_text(text=text)],
+        contents=[
+            types.Part.from_text(text=PROMPT_TEMPLATE),
+            types.Part.from_text(text=text),
+        ],
         config=types.GenerateContentConfig(
-            temperature=1.0,
+            temperature=0.1,
         ),
     )
     return response.text
@@ -135,8 +138,29 @@ def save_output_to_markdown(content: str, path: str = SAVE_PATH):
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
 
+        # If path already exists, save it with a counter name ie: file_1,file_2 etc
+        final_path = path
+        if os.path.exists(final_path):
+
+            base, extension = os.path.splitext(path)
+            counter = 1
+
+            # Buscamos un nombre que no esté ocupado
+            while os.path.exists(f"{base}_{counter}{extension}"):
+                counter += 1
+
+            path = f"{base}_{counter}{extension}"
+
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"Contenido guardado exitosamente en: {path}")
     except IOError as e:
         print(f"Error al guardar el archivbo en {path}: {e}")
+
+
+def set_gemini_key(key: str) -> None:
+    set_key(dotenv_path, "GEMINI_API_KEY", key)
+
+
+def set_since_date(date: str) -> None:
+    set_key(dotenv_path, "SINCE_DATE", date)
