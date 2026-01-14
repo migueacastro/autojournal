@@ -22,6 +22,7 @@ DEFAULT_SAVE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "outputs", DEFAULT_FILE_NAME)
 )
 DEFAULT_SINCE_DATE = "2 weeks ago"
+DEFAULT_UNTIL_DATE = "today"
 
 SAVE_PATH = (
     get_key(dotenv_path, "SAVE_PATH")
@@ -33,9 +34,14 @@ SINCE_DATE = (
     if get_key(dotenv_path, "SINCE_DATE")
     else DEFAULT_SINCE_DATE
 )
+UNTIL_DATE = (
+    get_key(dotenv_path, "UNTIL_DATE")
+    if get_key(dotenv_path, "UNTIL_DATE")
+    else DEFAULT_UNTIL_DATE
+)
 
 DEFAULT_PROMPT_TEMPLATE = """
-Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo como un changelog en un texto de tipo Markdown con todo los cambios en español. exceptuando nombres propios claro y no digas ningun preambulo con "aqui tienes un changelog". Solo muestra el changelog. de la siguiente manera:
+Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo como un changelog en un texto de tipo Markdown con todo los cambios en español y en orden descendente (desde recientes a mas antiguos). exceptuando nombres propios claro y no digas ningun preambulo con "aqui tienes un changelog". Solo muestra el changelog. de la siguiente manera:
   # (Fecha: DD/MM/AAAA)
     ## Repositorio: (Nombre del repositorio)
      - Descripción del cambio 1 en el repositorio x
@@ -78,7 +84,7 @@ def execute_git_log(path):
     try:
 
         log_output = subprocess.check_output(
-            ["git", "log", f'--since="{SINCE_DATE}"'],
+            ["git", "log", f'--since="{SINCE_DATE}"', f'--until="{UNTIL_DATE}"'],
             cwd=path,
             text=True,
             stderr=subprocess.STDOUT,
@@ -164,3 +170,7 @@ def set_gemini_key(key: str) -> None:
 
 def set_since_date(date: str) -> None:
     set_key(dotenv_path, "SINCE_DATE", date)
+
+
+def set_until_date(date:str) -> None:
+    set_key(dotenv_path, "UNTIL_DATE", date)

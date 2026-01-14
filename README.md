@@ -47,6 +47,7 @@ Before you begin, ensure you have the following installed:
 
     # The timeframe for the git logs (e.g., "1 day ago", "2 weeks ago", "2024-01-01")
     SINCE_DATE="2 weeks ago"
+    UNTIL_DATE="today"
 
     # (Optional) The absolute path to save the output file
     SAVE_PATH="/path/to/save/output.md"
@@ -69,7 +70,7 @@ python src/main.py
 - -h, --help : Show Help Message
 - -lk, --loadkey : Load Gemini API Key
 - -s, --since : Specify Since Date
-
+- -u, --until : Specify Until Date
 The script will then:
 
 1.  Read the configuration from your `.env` file.

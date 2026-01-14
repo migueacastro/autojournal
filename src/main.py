@@ -22,6 +22,14 @@ def main():
         metavar="SINCE",
     )
 
+    parser.add_argument(
+        "-u",
+        "--until",
+        type=str,
+        help="Until date in DD/MM/YYYY or 'today' or '2 weeks ago'",
+        metavar="UNTIL",
+    )
+
     args = parser.parse_args()
 
     if args.loadkey:
@@ -32,10 +40,13 @@ def main():
     if args.since:
         set_since_date(args.since)
 
+    if args.until:
+        set_until_date(args.until)
+
     client = create_client()
     paths = PATH_LIST
 
-    print(f"Getting logs since {SINCE_DATE}")
+    print(f"Getting logs since {SINCE_DATE} until {UNTIL_DATE}")
     all_logs = execute_git_log_in_paths(paths)
 
     result = prompt_with_logs(client, all_logs)
