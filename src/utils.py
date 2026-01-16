@@ -41,14 +41,28 @@ UNTIL_DATE = (
 )
 
 DEFAULT_PROMPT_TEMPLATE = """
-Eres un auditor de código IA. Tu tarea es revisar los commits que realizo el usuario en los proporcionados y hacer una lista por fecha de los cambios y la actividad del usuario. Debes plasmarlo como un changelog en un texto de tipo Markdown con todo los cambios en español y en orden descendente (desde recientes a mas antiguos). exceptuando nombres propios claro y no digas ningun preambulo con "aqui tienes un changelog". Solo muestra el changelog. de la siguiente manera:
-  # (Fecha: DD/MM/AAAA)
-    ## Repositorio: (Nombre del repositorio)
-     - Descripción del cambio 1 en el repositorio x
-     - Descripcion del cambio 2 en el repositorio x
-     - Descripción del cambio 1 en el repositorio y
-     - Descripcion del cambio 2 en el repositorio y
-     """
+Actúa como un Experto Redactor Técnico de Changelogs. Tu tarea es procesar los logs crudos de Git proporcionados y generar un registro de cambios limpio, profesional y legible en español.
+
+TU FUENTE DE VERDAD:
+Usa EXCLUSIVAMENTE el texto de los logs proporcionados a continuación. NO inventes repositorios, fechas ni commits que no aparezcan en el texto de entrada. Si un repositorio no tiene actividad en los logs, IGNÓRALO.
+
+REGLAS DE FORMATO (ESTRICTAS):
+1. NO uses bloques de código (ni ```markdown ni ```). Devuelve texto plano formateado.
+2. NO incluyas introducciones ni conclusiones ("Aquí está tu lista...", "Espero haber ayudado").
+3. Orden descendente por fecha (lo más nuevo arriba).
+4. Agrupa los cambios primero por FECHA y luego por REPOSITORIO.
+
+ESTRUCTURA DE SALIDA REQUERIDA:
+# (Fecha: DD/MM/AAAA)
+  ## Repositorio: <Nombre Exacto del Repositorio>
+    - <Descripción clara y concisa del cambio en español>
+    - <Descripción clara y concisa del cambio en español>
+
+REGLAS DE CONTENIDO:
+- Traduce los mensajes técnicos al español, pero mantén términos estándar (como endpoint, frontend, backend, bug, fix).
+- Si hay múltiples commits repetitivos (ej: "wip", "fix typo"), resúmelos en una sola línea coherente.
+- Elimina mensajes de merge automáticos irrelevantes.
+"""
 
 GEMINI_API_KEY = get_key(dotenv_path, "GEMINI_API_KEY")
 PATH_LIST = (
@@ -76,20 +90,22 @@ def execute_git_log(path):
     """
     Ejecutar git log en una ruta
     """
-    if not os.path.isdir(path):
+    
+    clean_path = os.path.normpath(path)
+
+    if not os.path.isdir(clean_path):
         return
-
-    repo_name = os.path.basename(os.path.abspath(path))
-
+    repo_name = os.path.basename(os.path.abspath(clean_path))
     try:
 
         log_output = subprocess.check_output(
-            ["git", "log", f'--since="{SINCE_DATE}"', f'--until="{UNTIL_DATE}"'],
-            cwd=path,
+            ["git", "log", "--since", SINCE_DATE, "--until", UNTIL_DATE],
+            cwd=clean_path,
             text=True,
             stderr=subprocess.STDOUT,
             encoding="utf-8",
         )
+        print(log_output)
         return f"--- Repositorio: {repo_name} ---\n{log_output}"
 
     except FileNotFoundError:
@@ -102,7 +118,7 @@ def execute_git_log(path):
 
         error_message = e.output
         if "not a git repository" in error_message.lower():
-            print(f"{path} no es un repositorio de git.\n")
+            print(f"{clean_path} no es un repositorio de git.\n")
 
         return ""
 
@@ -112,6 +128,7 @@ def execute_git_log_in_paths(paths):
     Ejecutar git log en varias rutas
     """
     all_logs = []
+    print(paths)
     for path in paths:
         all_logs.append(execute_git_log(path))
 
@@ -122,20 +139,31 @@ def prompt_with_logs(client: genai.Client, text: str):
     """
     Pasar los logs a un prompt de GEMINI
     """
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=[
-            types.Part.from_text(text=PROMPT_TEMPLATE),
-            types.Part.from_text(text=text),
-        ],
-        config=types.GenerateContentConfig(
-            temperature=0.1,
-        ),
-    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[
+                types.Part.from_text(text=PROMPT_TEMPLATE),
+                types.Part.from_text(text=text),
+            ],
+            config=types.GenerateContentConfig(
+                temperature=0.1,
+            ),
+        )
 
-    # Limpiar marcas de markdown
-    clean_text = response.text.replace("```markdown", "").replace("```", "").strip()
-    return clean_text
+        if response and hasattr(response, "text") and response.text:
+            # Limpiar marcas de markdown
+            clean_text = (
+                response.text.replace("```markdown", "").replace("```", "").strip()
+            )
+            return clean_text
+        else:
+            print("La respuesta de la API de Gemini no contiene texto.")
+            return ""
+
+    except Exception as e:
+        print(f"An unexpected error occurred while calling the Gemini API: {e}")
+        return ""
 
 
 def save_output_to_markdown(content: str, path: str = SAVE_PATH):
@@ -179,3 +207,4 @@ def set_since_date(date: str) -> str:
 def set_until_date(date:str) -> str:
     set_key(dotenv_path, "UNTIL_DATE", date)
     return date
+
