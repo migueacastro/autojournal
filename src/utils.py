@@ -171,9 +171,11 @@ def set_gemini_key(key: str) -> None:
     set_key(dotenv_path, "GEMINI_API_KEY", key)
 
 
-def set_since_date(date: str) -> None:
+def set_since_date(date: str) -> str:
     set_key(dotenv_path, "SINCE_DATE", date)
+    return date
 
 
-def set_until_date(date:str) -> None:
+def set_until_date(date:str) -> str:
     set_key(dotenv_path, "UNTIL_DATE", date)
+    return date

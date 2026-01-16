@@ -38,10 +38,10 @@ def main():
         return
 
     if args.since:
-        set_since_date(args.since)
+        SINCE_DATE = set_since_date(args.since)
 
     if args.until:
-        set_until_date(args.until)
+        UNTIL_DATE = set_until_date(args.until)
 
     client = create_client()
     paths = PATH_LIST
