@@ -1,4 +1,4 @@
-from utils import *
+import utils as u
 import argparse
 
 
@@ -33,25 +33,25 @@ def main():
     args = parser.parse_args()
 
     if args.loadkey:
-        set_gemini_key(args.loadkey)
+        u.set_gemini_key(args.loadkey)
         print("Gemini API Key has been set")
         return
 
     if args.since:
-        SINCE_DATE = set_since_date(args.since)
+        u.SINCE_DATE = u.set_since_date(args.since)
 
     if args.until:
-        UNTIL_DATE = set_until_date(args.until)
+        u.UNTIL_DATE = u.set_until_date(args.until)
 
-    client = create_client()
-    paths = PATH_LIST
+    client = u.create_client()
+    paths = u.PATH_LIST
 
-    print(f"Getting logs since {SINCE_DATE} until {UNTIL_DATE}")
-    all_logs = execute_git_log_in_paths(paths)
+    print(f"Getting logs since {u.SINCE_DATE} until {u.UNTIL_DATE}")
+    all_logs = u.execute_git_log_in_paths(paths)
 
-    result = prompt_with_logs(client, all_logs)
+    result = u.prompt_with_logs(client, all_logs)
 
-    save_output_to_markdown(result)
+    u.save_output_to_markdown(result)
 
 
 if __name__ == "__main__":
