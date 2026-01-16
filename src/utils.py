@@ -132,7 +132,10 @@ def prompt_with_logs(client: genai.Client, text: str):
             temperature=0.1,
         ),
     )
-    return response.text
+
+    # Limpiar marcas de markdown
+    clean_text = response.text.replace("```markdown", "").replace("```", "").strip()
+    return clean_text
 
 
 def save_output_to_markdown(content: str, path: str = SAVE_PATH):
