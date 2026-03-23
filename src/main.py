@@ -1,6 +1,6 @@
 import utils as u
 import argparse
-
+from datetime import datetime
 
 def main():
 
@@ -74,9 +74,20 @@ def main():
         print("Generating content with Gemini...")
         client = u.create_client()
         result = u.prompt_with_logs(client, all_logs)
+        
     else:
         print("Generating logs with logs...")
         result = u.format_raw_markdown(all_logs)
+    
+
+    date = datetime.now().strftime("%d/%m/%Y")
+    
+    # Armamos un encabezado bien profesional
+    header = f"# Reporte de Actividades - {u.USER_FULLNAME} - {date}\n\n"
+    #header += f"**Período evaluado:** {u.SINCE_DATE} al {u.UNTIL_DATE}\n\n"
+    #header += "---\n\n" # Una línea divisoria para separar el título del contenido
+    
+    result = header + result
 
     
 

@@ -18,6 +18,10 @@ USERNAME_GIT = (
     if get_key(dotenv_path, "USERNAME_GIT")
     else "user"
 )
+USER_FULLNAME = (get_key(dotenv_path, "USER_FULLNAME")
+    if get_key(dotenv_path, "USER_FULLNAME")
+    else ""
+)
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
 DEFAULT_FILE_NAME = f"cambios-{USERNAME_GIT}-{CURRENT_DATE}.md"
 DEFAULT_SAVE_PATH = os.path.abspath(
@@ -57,8 +61,8 @@ REGLAS DE FORMATO (ESTRICTAS):
 4. Agrupa los cambios primero por FECHA y luego por REPOSITORIO.
 
 ESTRUCTURA DE SALIDA REQUERIDA:
-# Fecha: DD/MM/AAAA
-## Repositorio: <Nombre Exacto del Repositorio>
+## Fecha: DD/MM/AAAA
+### Repositorio: <Nombre Exacto del Repositorio>
 - <Descripción clara y concisa del cambio en español>
 - <Descripción clara y concisa del cambio en español>
 
@@ -66,6 +70,8 @@ REGLAS DE CONTENIDO:
 - Traduce los mensajes técnicos al español, pero mantén términos estándar (como endpoint, frontend, backend, bug, fix).
 - Si hay múltiples commits repetitivos (ej: "wip", "fix typo"), resúmelos en una sola línea coherente.
 - Elimina mensajes de merge automáticos irrelevantes.
+- Traduce los mensajes técnicos al español, pero mantén términos estándar (como endpoint, frontend, backend, bug, fix).
+- Reemplaza etiquetas como "WIP" por frases más profesionales como "Fase inicial" o "En progreso".
 """
 
 GEMINI_API_KEY = get_key(dotenv_path, "GEMINI_API_KEY")
@@ -277,14 +283,18 @@ def save_output_to_pdf(content: str, path: str = SAVE_PATH):
                     font-size: 11pt;
                     color: #333; 
                 }}
-                h1 {{ 
-                    color: #2c3e50; 
-                    border-bottom: 1px solid #eee; 
-                    padding-bottom: 8px; 
-                }}
                 h2 {{ 
                     color: #34495e; 
+                    border-bottom: 1px solid #eee;
+                    padding-bottom: 4px;
                     padding-top: 15px; 
+                    font-size: 14pt;
+                }}
+                h3 {{
+                    color: #7f8c8d;
+                    font-size: 12pt;
+                    margin-top: 10px;
+                    margin-bottom: 5px;
                 }}
                 p {{
                     margin-bottom: 10px;
