@@ -1,14 +1,14 @@
 # AutoJournal 📝
 
-AutoJournal is a Python application that automatically generates a changelog or activity report from the git logs of your local repositories using the Gemini API.
+AutoJournal is a Python application that automatically generates a changelog or activity report from the git logs of your local repositories. It can extract raw logs or use the Gemini API to create intelligent, readable summaries exported to Markdown or PDF.
 
 ## Features
 
-- **Automated Changelog Generation:** Creates a clean, markdown-formatted changelog from your git commits.
-- **Multi-Repository Support:** Scans multiple local git repositories.
+- **Automated Changelog Generation:** Creates a clean, formatted changelog from your git commits.
+- **Dual Output Formats:** Export your reports as standard Markdown (`.md`) or professional PDF (`.pdf`) documents.
+- **AI-Powered Summaries (Optional):** Use Google's Gemini API to translate and summarize technical commits into a clean executive report.
+- **Multi-Repository Support:** Scans multiple local git repositories at once.
 - **Customizable Timeframe:** Specify the timeframe for the git logs (e.g., "1 day ago", "2 weeks ago").
-- **Customizable Output:** Tailor the output file name and save path.
-- **Powered by Gemini:** Uses Google's Gemini API for intelligent log summarization.
 
 ## Prerequisites
 
@@ -16,13 +16,14 @@ Before you begin, ensure you have the following installed:
 
 - [Python 3.6+](https://www.python.org/downloads/)
 - [Git](https://git-scm.com/downloads)
+- *(Note: PDF generation uses `weasyprint`, which may require some system-level libraries like Pango or Cairo depending on your OS).*
 
 ## Installation & Setup
 
 1.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/migueacastro/autojournal
+    git clone [https://github.com/migueacastro/autojournal](https://github.com/migueacastro/autojournal)
     cd autojournal
     ```
 
@@ -36,7 +37,7 @@ Before you begin, ensure you have the following installed:
     Create a file named `.env` in the root of the project with the following content:
 
     ```env
-    # Your Google Gemini API Key
+    # Your Google Gemini API Key (Required only if using the -ai flag)
     GEMINI_API_KEY="YOUR_API_KEY"
 
     # List of absolute paths to your local git repositories (JSON format)
@@ -50,7 +51,7 @@ Before you begin, ensure you have the following installed:
     UNTIL_DATE="today"
 
     # (Optional) The absolute path to save the output file
-    SAVE_PATH="/path/to/save/output.md"
+    SAVE_PATH="/path/to/save/output"
 
     # (Optional) A custom prompt for the Gemini API
     PROMPT_TEMPLATE="Your custom prompt here"
@@ -62,15 +63,17 @@ Before you begin, ensure you have the following installed:
 
 To run the application, execute the `main.py` script from the root of the project:
 
-```bash
-python src/main.py
-```
+```python src/main.py```
+
 ### Options
 
 - -h, --help : Show Help Message
 - -lk, --loadkey : Load Gemini API Key
 - -s, --since : Specify Since Date
 - -u, --until : Specify Until Date
+- -ai, --use-ai : Uses Gemini to make a brief based on logs. If skipped, it will generate a clean list with the raw logs instead.
+- -f, --format : Output format for the report. Choices are md for Markdown or pdf for PDF. (Default is pdf).
+
 The script will then:
 
 1.  Read the configuration from your `.env` file.

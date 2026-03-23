@@ -37,6 +37,15 @@ def main():
         help="Uses gemini to make a brief based on logs. If skipped, it will generate a list with the logs instead."
     )
 
+    parser.add_argument(
+        "-f",
+        "--format",
+        type=str,
+        choices=["md", "pdf"],
+        default="pdf",
+        help="Formato de salida del reporte: 'md' para Markdown o 'pdf' para PDF. Por defecto es 'pdf'."
+    )
+
     args = parser.parse_args()
 
     if args.loadkey:
@@ -71,7 +80,13 @@ def main():
 
     
 
-    u.save_output_to_markdown(result)
+    #u.save_output_to_markdown(result)
+    if args.format == "pdf":
+        print("Exportando reporte a formato PDF...")
+        u.save_output_to_pdf(result)
+    else:
+        print("Guardando reporte en formato Markdown...")
+        u.save_output_to_markdown(result)
 
 
 if __name__ == "__main__":

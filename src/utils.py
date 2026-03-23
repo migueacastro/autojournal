@@ -2,6 +2,8 @@ import os
 import subprocess
 import json
 from datetime import datetime
+import markdown
+from weasyprint import HTML
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv, set_key, get_key
@@ -225,3 +227,45 @@ def set_until_date(date:str) -> str:
     set_key(dotenv_path, "UNTIL_DATE", date)
     return date
 
+
+def save_output_to_pdf(content: str, path: str = SAVE_PATH):
+    """
+    Convertir el contenido Markdown a HTML y guardarlo como PDF.
+    """
+    try:
+        base, _ = os.path.splitext(path)
+        pdf_path = f"{base}.pdf"
+        
+        output_dir = os.path.dirname(pdf_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
+
+        if os.path.exists(pdf_path):
+            counter = 1
+            while os.path.exists(f"{base}_{counter}.pdf"):
+                counter += 1
+            pdf_path = f"{base}_{counter}.pdf"
+
+        html_content = markdown.markdown(content)
+        
+        styled_html = f"""
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 2cm; }}
+                h1 {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
+                h2 {{ color: #34495e; margin-top: 30px; }}
+                li {{ margin-bottom: 8px; }}
+            </style>
+        </head>
+        <body>
+            {html_content}
+        </body>
+        </html>
+        """
+        
+        HTML(string=styled_html).write_pdf(pdf_path)
+        print(f"PDF Report successfully generated at: {pdf_path}")
+        
+    except Exception as e:
+        print(f"Error while generating PDF: {e}")
