@@ -30,6 +30,13 @@ def main():
         metavar="UNTIL",
     )
 
+    parser.add_argument(
+        "-ai",
+        "--use-ai",
+        action="store_true",
+        help="Uses gemini to make a brief based on logs. If skipped, it will generate a list with the logs instead."
+    )
+
     args = parser.parse_args()
 
     if args.loadkey:
@@ -42,14 +49,27 @@ def main():
 
     if args.until:
         u.UNTIL_DATE = u.set_until_date(args.until)
-
-    client = u.create_client()
+    
+    client = None
+    result = None
     paths = u.PATH_LIST
 
     print(f"Getting logs since {u.SINCE_DATE} until {u.UNTIL_DATE}")
     all_logs = u.execute_git_log_in_paths(paths)
 
-    result = u.prompt_with_logs(client, all_logs)
+    if not all_logs.strip():
+        print("No commits were found in the repositories between these dates.")
+        return
+
+    if args.use_ai:
+        print("Generating content with Gemini...")
+        client = u.create_client()
+        result = u.prompt_with_logs(client, all_logs)
+    else:
+        print("Generating logs with logs...")
+        result = u.format_raw_markdown(all_logs)
+
+    
 
     u.save_output_to_markdown(result)
 

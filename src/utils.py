@@ -81,6 +81,11 @@ def create_client():
     """
     Crear cliente de GEMINI
     """
+    if not GEMINI_API_KEY:
+        print("Error: GEMINI_API_KEY variable not found in environment.")
+        print("Use -lk <YOUR_GEMINI_API_KEY> to load the api key first.")
+        exit(1)
+
     client = genai.Client(api_key=GEMINI_API_KEY)
     print()
     return client
@@ -94,19 +99,20 @@ def execute_git_log(path):
     clean_path = os.path.normpath(path)
 
     if not os.path.isdir(clean_path):
-        return
+        return ""
     repo_name = os.path.basename(os.path.abspath(clean_path))
     try:
 
         log_output = subprocess.check_output(
-            ["git", "log", "--since", SINCE_DATE, "--until", UNTIL_DATE],
+            ["git", "log", "--since", SINCE_DATE, "--until", UNTIL_DATE, "--no-merges", "--date=short", "--pretty=format:- **%ad**: %s"],
             cwd=clean_path,
             text=True,
             stderr=subprocess.STDOUT,
             encoding="utf-8",
         )
-        print(log_output)
-        return f"--- Repositorio: {repo_name} ---\n{log_output}"
+        if not log_output.strip():
+            return ""
+        return f"\n### Repositorio: {repo_name}\n{log_output}\n"
 
     except FileNotFoundError:
         print(
@@ -123,6 +129,15 @@ def execute_git_log(path):
         return ""
 
 
+def format_raw_markdown(logs: str) -> str:
+    """
+        Genera la estructura del documento cuando no se usa Gemini.
+    """
+    header = f"#Reporte de Cambios ({SINCE_DATE} a {UNTIL_DATE})\n\n"
+    #header += "> *Nota: Reporte generado automáticamente desde le historial de Git"
+    return header + logs
+
+
 def execute_git_log_in_paths(paths):
     """
     Ejecutar git log en varias rutas
@@ -130,9 +145,11 @@ def execute_git_log_in_paths(paths):
     all_logs = []
     print(paths)
     for path in paths:
-        all_logs.append(execute_git_log(path))
+        log = execute_git_log(path)
+        if log:
+            all_logs.append(log)
 
-    return "\\n".join(all_logs)  # Unir logs con \n
+    return "\n".join(all_logs)  # Unir logs con \n
 
 
 def prompt_with_logs(client: genai.Client, text: str):
