@@ -3,7 +3,7 @@ import subprocess
 import json
 from datetime import datetime
 import markdown
-from weasyprint import HTML
+from xhtml2pdf import pisa
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv, set_key, get_key
@@ -230,7 +230,7 @@ def set_until_date(date:str) -> str:
 
 def save_output_to_pdf(content: str, path: str = SAVE_PATH):
     """
-    Convertir el contenido Markdown a HTML y guardarlo como PDF.
+    Convertir el contenido Markdown a HTML y guardarlo como PDF usando xhtml2pdf.
     """
     try:
         base, _ = os.path.splitext(path)
@@ -264,8 +264,14 @@ def save_output_to_pdf(content: str, path: str = SAVE_PATH):
         </html>
         """
         
-        HTML(string=styled_html).write_pdf(pdf_path)
-        print(f"PDF Report successfully generated at: {pdf_path}")
+        # Generar el PDF
+        with open(pdf_path, "wb") as pdf_file:
+            pisa_status = pisa.CreatePDF(styled_html, dest=pdf_file)
+
+        if pisa_status.err:
+            print(f"Hubo un error al generar el PDF: {pisa_status.err}")
+        else:
+            print(f"PDF Report successfully generated at: {pdf_path}")
         
     except Exception as e:
         print(f"Error while generating PDF: {e}")
