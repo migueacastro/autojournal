@@ -41,6 +41,8 @@ UNTIL_DATE = (
     if get_key(dotenv_path, "UNTIL_DATE")
     else DEFAULT_UNTIL_DATE
 )
+BRANCH_NAME = get_key(dotenv_path, "BRANCH_NAME")
+
 
 DEFAULT_PROMPT_TEMPLATE = """
 Actúa como un Experto Redactor Técnico de Changelogs. Tu tarea es procesar los logs crudos de Git proporcionados y generar un registro de cambios limpio, profesional y legible en español.
@@ -104,9 +106,22 @@ def execute_git_log(path):
         return ""
     repo_name = os.path.basename(os.path.abspath(clean_path))
     try:
+        git_cmd = ["git", "log"]
+        
 
+        if BRANCH_NAME:
+            git_cmd.append(BRANCH_NAME)
+            
+        git_cmd.extend([
+            f"--author={USERNAME_GIT}", 
+            "--since", SINCE_DATE, 
+            "--until", UNTIL_DATE, 
+            "--no-merges", 
+            "--date=short", 
+            "--pretty=format:- **%ad**: %s"
+        ])
         log_output = subprocess.check_output(
-            ["git", "log", "--since", SINCE_DATE, "--until", UNTIL_DATE, "--no-merges", "--date=short", "--pretty=format:- **%ad**: %s"],
+            git_cmd,
             cwd=clean_path,
             text=True,
             stderr=subprocess.STDOUT,
@@ -248,14 +263,35 @@ def save_output_to_pdf(content: str, path: str = SAVE_PATH):
 
         html_content = markdown.markdown(content)
         
+        # xhtml2pdf specific CSS fixes
         styled_html = f"""
         <html>
         <head>
             <style>
-                body {{ font-family: Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; margin: 2cm; }}
-                h1 {{ color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }}
-                h2 {{ color: #34495e; margin-top: 30px; }}
-                li {{ margin-bottom: 8px; }}
+                @page {{
+                    size: a4 portrait;
+                    margin: 2cm;
+                }}
+                body {{ 
+                    font-family: Helvetica, Arial, sans-serif; 
+                    font-size: 11pt;
+                    color: #333; 
+                }}
+                h1 {{ 
+                    color: #2c3e50; 
+                    border-bottom: 1px solid #eee; 
+                    padding-bottom: 8px; 
+                }}
+                h2 {{ 
+                    color: #34495e; 
+                    padding-top: 15px; 
+                }}
+                p {{
+                    margin-bottom: 10px;
+                }}
+                li {{ 
+                    margin-bottom: 6px; 
+                }}
             </style>
         </head>
         <body>
