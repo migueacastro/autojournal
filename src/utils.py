@@ -57,10 +57,10 @@ REGLAS DE FORMATO (ESTRICTAS):
 4. Agrupa los cambios primero por FECHA y luego por REPOSITORIO.
 
 ESTRUCTURA DE SALIDA REQUERIDA:
-# (Fecha: DD/MM/AAAA)
-  ## Repositorio: <Nombre Exacto del Repositorio>
-    - <Descripción clara y concisa del cambio en español>
-    - <Descripción clara y concisa del cambio en español>
+# Fecha: DD/MM/AAAA
+## Repositorio: <Nombre Exacto del Repositorio>
+- <Descripción clara y concisa del cambio en español>
+- <Descripción clara y concisa del cambio en español>
 
 REGLAS DE CONTENIDO:
 - Traduce los mensajes técnicos al español, pero mantén términos estándar (como endpoint, frontend, backend, bug, fix).
