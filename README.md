@@ -43,8 +43,14 @@ Before you begin, ensure you have the following installed:
     # List of absolute paths to your local git repositories (JSON format)
     PATH_LIST='["/path/to/repo1", "/path/to/repo2"]'
 
-    # Your Git username (used for the output file name)
-    USERNAME_GIT="your-username"
+    # Your Git email/username (used to filter commits and for the output filename)
+    EMAIL_GIT="your-email@example.com"
+
+    # Your full name (used for the report header)
+    USER_FULLNAME="Your Name"
+
+    # (Optional) Specific branch to scan (e.g., "main", "develop")
+    BRANCH_NAME="main"
 
     # The timeframe for the git logs (e.g., "1 day ago", "2 weeks ago", "2024-01-01")
     SINCE_DATE="2 weeks ago"
@@ -63,31 +69,34 @@ Before you begin, ensure you have the following installed:
 
 To run the application, execute the `main.py` script from the root of the project:
 
-```python src/main.py```
+```bash
+python src/main.py
+```
 
 ### Options
 
-- -h, --help : Show Help Message
-- -lk, --loadkey : Load Gemini API Key
-- -s, --since : Specify Since Date
-- -u, --until : Specify Until Date
-- -ai, --use-ai : Uses Gemini to make a brief based on logs. If skipped, it will generate a clean list with the raw logs instead.
-- -f, --format : Output format for the report. Choices are md for Markdown or pdf for PDF. (Default is pdf).
+- `-h, --help`: Show Help Message.
+- `-lk, --loadkey`: Load and save Gemini API Key to `.env`.
+- `-s, --since`: Specify Since Date (e.g., "2023-01-01" or "yesterday").
+- `-u, --until`: Specify Until Date.
+- `-ai, --use-ai`: Uses Gemini to create a summary based on logs. If skipped, it generates a raw list of commits.
+- `-f, --format`: Output format for the report. Choices: `md` (Markdown) or `pdf` (PDF). (Default: `pdf`).
 
-The script will then:
+The script will:
 
-1.  Read the configuration from your `.env` file.
-2.  Fetch the git logs from the specified repositories.
-3.  Generate a report using the Gemini API.
-4.  Save the report to the specified `SAVE_PATH` or the default location (`outputs/cambios-<username>-<date>.md`).
+1.  Read configuration from `.env`.
+2.  Fetch git logs from specified repositories filtering by `EMAIL_GIT` and `BRANCH_NAME`.
+3.  Generate content (AI summary or raw logs).
+4.  Save the report to `SAVE_PATH` or default (`outputs/cambios-<email>-<date>.<ext>`).
 
 ## Customization
 
 You can customize the following in your `.env` file:
 
-- **`PROMPT_TEMPLATE`**: Change the prompt to alter the style and content of the generated report.
-- **`SAVE_PATH`**: Specify a different absolute path to save the output file.
-- **`USERNAME_GIT`**: Change the username used in the default output file name.
-- **`SINCE_DATE`**: Adjust the timeframe for the git logs.
+- **`PROMPT_TEMPLATE`**: Alter the style, language, or structure of the AI-generated report.
+- **`SAVE_PATH`**: Specify a different absolute path for the output files.
+- **`EMAIL_GIT`**: Ensure this matches your git configuration (`git config user.email`) to correctly filter your activity.
+- **`BRANCH_NAME`**: If set, the script will only look for commits in that specific branch across all repositories.
+- **`USER_FULLNAME`**: Sets the name displayed in the professional report header.
 
 ---
