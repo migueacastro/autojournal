@@ -13,9 +13,9 @@ dotenv_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".en
 
 load_dotenv(dotenv_path=dotenv_path)
 
-USERNAME_GIT = (
-    get_key(dotenv_path, "USERNAME_GIT")
-    if get_key(dotenv_path, "USERNAME_GIT")
+EMAIL_GIT = (
+    get_key(dotenv_path, "EMAIL_GIT")
+    if get_key(dotenv_path, "EMAIL_GIT")
     else "user"
 )
 USER_FULLNAME = (get_key(dotenv_path, "USER_FULLNAME")
@@ -23,7 +23,7 @@ USER_FULLNAME = (get_key(dotenv_path, "USER_FULLNAME")
     else ""
 )
 CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
-DEFAULT_FILE_NAME = f"cambios-{USERNAME_GIT}-{CURRENT_DATE}.md"
+DEFAULT_FILE_NAME = f"cambios-{EMAIL_GIT}-{CURRENT_DATE}.md"
 DEFAULT_SAVE_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "outputs", DEFAULT_FILE_NAME)
 )
@@ -119,7 +119,7 @@ def execute_git_log(path):
             git_cmd.append(BRANCH_NAME)
             
         git_cmd.extend([
-            f"--author={USERNAME_GIT}", 
+            f"--author={EMAIL_GIT}", 
             "--since", SINCE_DATE, 
             "--until", UNTIL_DATE, 
             "--no-merges", 
