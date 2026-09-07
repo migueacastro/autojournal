@@ -81,6 +81,10 @@ def main():
         print("Generating report from raw logs...")
         result = all_logs
 
+    if not result.strip():
+        print("The generated content came back empty (Gemini may have failed). No report was saved.")
+        return
+
 
     period = f"del {u.display_date(u.SINCE_DATE)} al {u.display_date(u.UNTIL_DATE)}"
 

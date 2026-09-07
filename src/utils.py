@@ -118,6 +118,27 @@ def filename_date(date_str: str) -> str:
     return FILENAME_INVALID_CHARS_RE.sub("-", raw)
 
 
+def git_since_date(date_str: str) -> str:
+    """
+    Fecha para el --since de Git, normalizada a ISO (YYYY-MM-DD).
+    Git no interpreta bien formatos como DD/MM/YYYY (los lee mes primero),
+    así que se la pasamos ya resuelta.
+    """
+    resolved = resolve_date(date_str)
+    return resolved.strftime("%Y-%m-%d") if resolved else str(date_str)
+
+
+def git_until_date(date_str: str) -> str:
+    """
+    Fecha para el --until de Git en ISO, al final del día (23:59:59) para
+    incluir todos los commits de ese día.
+    """
+    resolved = resolve_date(date_str)
+    if not resolved:
+        return str(date_str)
+    return f"{resolved.strftime('%Y-%m-%d')} 23:59:59"
+
+
 def compute_save_path() -> str:
     """
     Ruta de salida del reporte. El nombre del archivo siempre se genera
@@ -223,11 +244,11 @@ def execute_git_log(path):
 
             git_cmd.extend(valid_branches)
         git_cmd.extend([
-            f"--author={EMAIL_GIT}", 
-            "--since", SINCE_DATE, 
-            "--until", UNTIL_DATE, 
-            "--no-merges", 
-            "--date=short", 
+            f"--author={EMAIL_GIT}",
+            "--since", git_since_date(SINCE_DATE),
+            "--until", git_until_date(UNTIL_DATE),
+            "--no-merges",
+            "--date=short",
             "--pretty=format:- **%ad**: %s"
         ])
         log_output = subprocess.check_output(

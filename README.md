@@ -104,6 +104,6 @@ You can customize the following in your `.env` file:
 - **`EMAIL_GIT`**: Ensure this matches your git configuration (`git config user.email`) to correctly filter your activity.
 - **`BRANCH_NAME`**: If set, the script will only look for commits in those branches across all repositories. Separate multiple branches with `|` (e.g., `BRANCH_NAME=main|develop|mirama3`). Branches missing from a repository are skipped with a warning instead of failing the run.
 - **`USER_FULLNAME`**: Sets the name displayed in the report header and used in the output filename.
-- **`SINCE_DATE` / `UNTIL_DATE`**: Accept relative ("2 weeks ago", "today") or absolute ("2026-08-05", "05/08/2026") dates. They are passed to Git as-is, and resolved to real dates for the header and the filename.
+- **`SINCE_DATE` / `UNTIL_DATE`**: Accept relative ("2 weeks ago", "today") or absolute ("2026-08-05", "05/08/2026") dates. They are normalized to ISO (YYYY-MM-DD) before being passed to Git — so any format works correctly — and resolved to real dates for the header and the filename.
 
 ---
