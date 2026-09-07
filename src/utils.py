@@ -1,7 +1,9 @@
 import os
+import re
 import subprocess
 import json
-from datetime import datetime
+from calendar import monthrange
+from datetime import datetime, timedelta
 import markdown
 from xhtml2pdf import pisa
 from google import genai
@@ -22,19 +24,12 @@ USER_FULLNAME = (get_key(dotenv_path, "USER_FULLNAME")
     if get_key(dotenv_path, "USER_FULLNAME")
     else ""
 )
-CURRENT_DATE = datetime.now().strftime("%Y-%m-%d")
-DEFAULT_FILE_NAME = f"cambios-{EMAIL_GIT}-{CURRENT_DATE}.md"
-DEFAULT_SAVE_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "outputs", DEFAULT_FILE_NAME)
-)
+# Nombre que aparece en el encabezado y en el nombre del archivo
+DISPLAY_NAME = USER_FULLNAME if USER_FULLNAME else EMAIL_GIT
+
 DEFAULT_SINCE_DATE = "2 weeks ago"
 DEFAULT_UNTIL_DATE = "today"
 
-SAVE_PATH = (
-    get_key(dotenv_path, "SAVE_PATH")
-    if get_key(dotenv_path, "SAVE_PATH")
-    else DEFAULT_SAVE_PATH
-)
 SINCE_DATE = (
     get_key(dotenv_path, "SINCE_DATE")
     if get_key(dotenv_path, "SINCE_DATE")
@@ -45,7 +40,99 @@ UNTIL_DATE = (
     if get_key(dotenv_path, "UNTIL_DATE")
     else DEFAULT_UNTIL_DATE
 )
+
+OUTPUT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "outputs"))
+SAVE_PATH_ENV = get_key(dotenv_path, "SAVE_PATH")
 BRANCH_NAME = get_key(dotenv_path, "BRANCH_NAME")
+
+FILENAME_INVALID_CHARS_RE = re.compile(r'[\\/:*?"<>|]')
+RELATIVE_DATE_RE = re.compile(r"^(\d+)\s*(day|week|month|year)s?\s*(?:ago)?$", re.IGNORECASE)
+
+
+def _subtract_months(dt: datetime, months: int) -> datetime:
+    """
+    Restar N meses a una fecha sin desbordar el día (ej: 31 de marzo -> 28/29 de febrero).
+    """
+    total = dt.year * 12 + (dt.month - 1) - months
+    year, month_zero_based = divmod(total, 12)
+    month = month_zero_based + 1
+    day = min(dt.day, monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
+
+
+def resolve_date(date_str: str):
+    """
+    Convierte fechas relativas ('2 weeks ago', 'today', 'yesterday', 'last month')
+    o absolutas ('2026-08-05', '05/08/2026', '05-08-2026') en un datetime.
+    También acepta el formato de Git con puntos ('2.weeks.ago').
+    Devuelve None si no se puede interpretar.
+    """
+    value = (date_str or "").strip().lower().replace(".", " ")
+    now = datetime.now()
+
+    if value in ("today", "hoy", "now"):
+        return now
+    if value in ("yesterday", "ayer"):
+        return now - timedelta(days=1)
+    if value in ("last week", "semana pasada"):
+        return now - timedelta(weeks=1)
+    if value in ("last month", "mes pasado"):
+        return _subtract_months(now, 1)
+
+    match = RELATIVE_DATE_RE.match(value)
+    if match:
+        amount, unit = int(match.group(1)), match.group(2)
+        if unit == "day":
+            return now - timedelta(days=amount)
+        if unit == "week":
+            return now - timedelta(weeks=amount)
+        if unit == "month":
+            return _subtract_months(now, amount)
+        if unit == "year":
+            return _subtract_months(now, 12 * amount)
+
+    for date_format in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(value, date_format)
+        except ValueError:
+            continue
+
+    return None
+
+
+def display_date(date_str: str) -> str:
+    """
+    Fecha resuelta en formato DD/MM/YYYY para mostrar en el reporte.
+    Si no se puede resolver, se muestra el texto original.
+    """
+    resolved = resolve_date(date_str)
+    return resolved.strftime("%d/%m/%Y") if resolved else str(date_str)
+
+
+def filename_date(date_str: str) -> str:
+    """
+    Fecha resuelta en formato DD-MM-YYYY (sin caracteres inválidos) para el nombre del archivo.
+    """
+    resolved = resolve_date(date_str)
+    raw = resolved.strftime("%d-%m-%Y") if resolved else str(date_str)
+    return FILENAME_INVALID_CHARS_RE.sub("-", raw)
+
+
+def compute_save_path() -> str:
+    """
+    Ruta de salida del reporte. El nombre del archivo siempre se genera
+    automáticamente ('Reporte {nombre} del {desde} al {hasta}'); SAVE_PATH del .env,
+    si está definido, solo cambia la carpeta de destino (por defecto: outputs/).
+    """
+    output_dir = SAVE_PATH_ENV if SAVE_PATH_ENV else OUTPUT_DIR
+    safe_name = FILENAME_INVALID_CHARS_RE.sub("-", DISPLAY_NAME).strip()
+    file_name = (
+        f"Reporte {safe_name} del {filename_date(SINCE_DATE)} al {filename_date(UNTIL_DATE)}"
+    )
+    return os.path.join(output_dir, file_name)
+
+
+SAVE_PATH = compute_save_path()
 
 
 DEFAULT_PROMPT_TEMPLATE = """
@@ -113,11 +200,28 @@ def execute_git_log(path):
     repo_name = os.path.basename(os.path.abspath(clean_path))
     try:
         git_cmd = ["git", "log"]
-        
 
         if BRANCH_NAME:
-            git_cmd.append(BRANCH_NAME)
-            
+            # BRANCH_NAME admite varias ramas separadas por '|', ej: "main|develop"
+            branches = [b.strip() for b in BRANCH_NAME.split("|") if b.strip()]
+            valid_branches = []
+            for branch in branches:
+                check = subprocess.run(
+                    ["git", "rev-parse", "--verify", "--quiet", branch],
+                    cwd=clean_path,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                if check.returncode == 0:
+                    valid_branches.append(branch)
+                else:
+                    print(f"'{branch}' no existe en {repo_name}, se omite.\n")
+
+            if not valid_branches:
+                print(f"Ninguna de las ramas ({BRANCH_NAME}) existe en {repo_name}.\n")
+                return ""
+
+            git_cmd.extend(valid_branches)
         git_cmd.extend([
             f"--author={EMAIL_GIT}", 
             "--since", SINCE_DATE, 
@@ -150,15 +254,6 @@ def execute_git_log(path):
             print(f"{clean_path} no es un repositorio de git.\n")
 
         return ""
-
-
-def format_raw_markdown(logs: str) -> str:
-    """
-        Genera la estructura del documento cuando no se usa Gemini.
-    """
-    header = f"#Reporte de Cambios ({SINCE_DATE} a {UNTIL_DATE})\n\n"
-    #header += "> *Nota: Reporte generado automáticamente desde le historial de Git"
-    return header + logs
 
 
 def execute_git_log_in_paths(paths):
@@ -206,33 +301,35 @@ def prompt_with_logs(client: genai.Client, text: str):
         return ""
 
 
-def save_output_to_markdown(content: str, path: str = SAVE_PATH):
+def save_output_to_markdown(content: str, path: str = None):
     """
     Guardar la salida a un archivo markdown en una ruta
     """
     try:
+        path = path if path else SAVE_PATH
+        base, _ = os.path.splitext(path)
+        path = f"{base}.md"
+
         output_dir = os.path.dirname(path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
 
         # If path already exists, save it with a counter name ie: file_1,file_2 etc
-        final_path = path
-        if os.path.exists(final_path):
+        if os.path.exists(path):
 
-            base, extension = os.path.splitext(path)
             counter = 1
 
             # Buscamos un nombre que no esté ocupado
-            while os.path.exists(f"{base}_{counter}{extension}"):
+            while os.path.exists(f"{base}_{counter}.md"):
                 counter += 1
 
-            path = f"{base}_{counter}{extension}"
+            path = f"{base}_{counter}.md"
 
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"Contenido guardado exitosamente en: {path}")
     except IOError as e:
-        print(f"Error al guardar el archivbo en {path}: {e}")
+        print(f"Error al guardar el archivo en {path}: {e}")
 
 
 def set_gemini_key(key: str) -> None:
@@ -249,11 +346,12 @@ def set_until_date(date:str) -> str:
     return date
 
 
-def save_output_to_pdf(content: str, path: str = SAVE_PATH):
+def save_output_to_pdf(content: str, path: str = None):
     """
     Convertir el contenido Markdown a HTML y guardarlo como PDF usando xhtml2pdf.
     """
     try:
+        path = path if path else SAVE_PATH
         base, _ = os.path.splitext(path)
         pdf_path = f"{base}.pdf"
         

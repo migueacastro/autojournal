@@ -1,6 +1,5 @@
 import utils as u
 import argparse
-from datetime import datetime
 
 def main():
 
@@ -58,7 +57,10 @@ def main():
 
     if args.until:
         u.UNTIL_DATE = u.set_until_date(args.until)
-    
+
+    # Recalculamos la ruta de salida por si las fechas cambiaron por CLI
+    u.SAVE_PATH = u.compute_save_path()
+
     client = None
     result = None
     paths = u.PATH_LIST
@@ -74,22 +76,20 @@ def main():
         print("Generating content with Gemini...")
         client = u.create_client()
         result = u.prompt_with_logs(client, all_logs)
-        
-    else:
-        print("Generating logs with logs...")
-        result = u.format_raw_markdown(all_logs)
-    
 
-    date = datetime.now().strftime("%d/%m/%Y")
-    
-    # Armamos un encabezado bien profesional
-    header = f"# Reporte de Actividades - {u.USER_FULLNAME} - {date}\n\n"
-    #header += f"**Período evaluado:** {u.SINCE_DATE} al {u.UNTIL_DATE}\n\n"
-    #header += "---\n\n" # Una línea divisoria para separar el título del contenido
-    
+    else:
+        print("Generating report from raw logs...")
+        result = all_logs
+
+
+    period = f"del {u.display_date(u.SINCE_DATE)} al {u.display_date(u.UNTIL_DATE)}"
+
+    # Armamos un encabezado bien profesional, con el período real del reporte
+    header = f"# Reporte de Actividades - {u.DISPLAY_NAME}\n\n**Período: {period}**\n\n"
+
     result = header + result
 
-    
+
 
     #u.save_output_to_markdown(result)
     if args.format == "pdf":
